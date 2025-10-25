@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Encryption & Decryption Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+<style>
+  * {
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+  }
+
+  body {
+    background-color: #0d1117;
+    color: #e6edf3;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+
+  .container {
+    background: #161b22;
+    padding: 30px 40px;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 0 20px rgba(0, 132, 255, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .container:hover {
+    box-shadow: 0 0 30px rgba(0, 132, 255, 0.5);
+  }
+
+  h1 {
+    text-align: center;
+    color: #58a6ff;
+    margin-bottom: 20px;
+  }
+
+  textarea {
+    width: 100%;
+    height: 100px;
+    padding: 10px;
+    background: #0d1117;
+    color: white;
+    border: 1px solid #58a6ff;
+    border-radius: 8px;
+    resize: none;
+    margin-bottom: 15px;
+  }
+
+  select, input {
+    width: 100%;
+    padding: 10px;
+    background: #0d1117;
+    color: white;
+    border: 1px solid #58a6ff;
+    border-radius: 8px;
+    margin-bottom: 15px;
+  }
+
+  button {
+    width: 48%;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  #encryptBtn {
+    background: #007bff;
+    color: white;
+  }
+
+  #encryptBtn:hover {
+    background: #005ecb;
+  }
+
+  #decryptBtn {
+    background: #21262d;
+    color: #58a6ff;
+    border: 1px solid #58a6ff;
+  }
+
+  #decryptBtn:hover {
+    background: #1e293b;
+  }
+
+  .button-group {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+  }
+
+  .output-container {
+    background: #0d1117;
+    border: 1px solid #58a6ff;
+    border-radius: 8px;
+    padding: 10px;
+    color: #e6edf3;
+    word-wrap: break-word;
+    min-height: 80px;
+  }
+
+  .footer {
+    text-align: center;
+    font-size: 0.9em;
+    color: #8b949e;
+    margin-top: 15px;
+  }
+
+  .mode-label {
+    color: #58a6ff;
+    font-weight: 600;
+  }
+</style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Encryption & Decryption Simulator</h1>
+
+    <label for="cipher">Select Cipher Type:</label>
+    <select id="cipher">
+      <option value="caesar">Caesar Cipher</option>
+      <option value="aes">AES Encryption</option>
+      <option value="des">DES Encryption</option>
+      <option value="base64">Base64 Encode/Decode</option>
+      <option value="sha256">SHA-256 Hash</option>
+    </select>
+
+    <label for="key">Enter Secret Key / Shift Value:</label>
+    <input type="text" id="key" placeholder="Enter key (for Caesar use shift number)">
+
+    <label for="inputText">Enter Text:</label>
+    <textarea id="inputText" placeholder="Type your message..."></textarea>
+
+    <div class="button-group">
+      <button id="encryptBtn">Encrypt</button>
+      <button id="decryptBtn">Decrypt</button>
+    </div>
+
+    <div class="mode-label">Output:</div>
+    <div class="output-container" id="outputText">Result will appear here...</div>
+  </div>
+
+<script>
+
+(function () {
+  const cipherSelect = document.getElementById('cipher');
+  const inputText = document.getElementById('inputText');
+  const keyInput = document.getElementById('key');
+  const outputText = document.getElementById('outputText');
+  const encryptBtn = document.getElementById('encryptBtn');
+  const decryptBtn = document.getElementById('decryptBtn');
+
+  
+  function normalizeShift(s) {
+    let n = Number(s);
+    if (!Number.isFinite(n)) n = 0;
+    n = Math.trunc(n);
+    n = ((n % 26) + 26) % 26;
+    return n;
+  }
+
+  function caesarShiftChar(ch, shift) {
+    const code = ch.charCodeAt(0);
+    if (code >= 65 && code <= 90) {
+      const base = 65;
+      return String.fromCharCode(((code - base + shift) % 26) + base);
+    }
+    if (code >= 97 && code <= 122) {
+      const base = 97;
+      return String.fromCharCode(((code - base + shift) % 26) + base);
+    }
+    return ch;
+  }
+
+  function caesarEncrypt(str, shiftVal) {
+    const shift = normalizeShift(shiftVal);
+    let out = '';
+    for (let i = 0; i < str.length; i++) {
+      out += caesarShiftChar(str[i], shift);
+    }
+    return out;
+  }
+  function caesarDecrypt(str, shiftVal) {
+    const shift = normalizeShift(shiftVal);
+    const decryptShift = (26 - shift) % 26;
+    let out = '';
+    for (let i = 0; i < str.length; i++) {
+      out += caesarShiftChar(str[i], decryptShift);
+    }
+    return out;
+  }
+
+  function base64EncodeUtf8(str) {
+    try {
+      return btoa(unescape(encodeURIComponent(str)));
+    } catch (e) {
+      return btoa(str);
+    }
+  }
+  function base64DecodeUtf8(b64) {
+    try {
+      return decodeURIComponent(escape(atob(b64)));
+    } catch (e) {
+      return atob(b64);
+    }
+  }
+
+  function showOutput(text, isErr=false) {
+    outputText.textContent = text;
+    outputText.style.opacity = '1';
+    if (isErr) {
+      outputText.style.color = '#ffb0b0';
+    } else {
+      outputText.style.color = '';
+    }
+  }
+
+  const AUTO_FILL_AFTER_ENCRYPT = true;
+
+  encryptBtn.addEventListener('click', () => {
+    const cipher = (cipherSelect.value || '').toLowerCase();
+    const key = keyInput.value;
+    const plain = inputText.value || '';
+
+    if (!plain) {
+      showOutput('Enter text to encrypt.', true);
+      return;
+    }
+
+    try {
+      let result = '';
+
+      switch (cipher) {
+        case 'caesar': {
+          if (key === '') {
+            showOutput('Enter shift value (e.g., 3).', true);
+            return;
+          }
+          result = caesarEncrypt(plain, key);
+          showOutput(result);
+          break;
+        }
+
+        case 'base64': {
+          result = base64EncodeUtf8(plain);
+          showOutput(result);
+          break;
+        }
+
+        case 'aes': {
+          if (!window.CryptoJS) {
+            showOutput('CryptoJS not loaded for AES.', true);
+            return;
+          }
+          if (!key) {
+            showOutput('Enter a key/passphrase for AES.', true);
+            return;
+          }
+          result = CryptoJS.AES.encrypt(plain, key).toString();
+          showOutput(result);
+          break;
+        }
+
+        case 'des': {
+          if (!window.CryptoJS) {
+            showOutput('CryptoJS not loaded for DES.', true);
+            return;
+          }
+          if (!key) {
+            showOutput('Enter a key for DES.', true);
+            return;
+          }
+          result = CryptoJS.DES.encrypt(plain, key).toString();
+          showOutput(result);
+          break;
+        }
+
+        case 'sha256': {
+          if (!window.CryptoJS) {
+            showOutput('CryptoJS not loaded for SHA-256.', true);
+            return;
+          }
+          result = CryptoJS.SHA256(plain).toString(CryptoJS.enc.Hex);
+          showOutput(result);
+          break;
+        }
+
+        default:
+          showOutput('Unsupported cipher selected.', true);
+      }
+
+      if (AUTO_FILL_AFTER_ENCRYPT && ['caesar','base64','aes','des'].includes(cipher)) {
+        setTimeout(() => {
+          inputText.value = result;
+        }, 100);
+      }
+
+    } catch (err) {
+      showOutput('Encryption error: ' + (err && err.message ? err.message : String(err)), true);
+      console.error(err);
+    }
+  });
+
+  decryptBtn.addEventListener('click', () => {
+    const cipher = (cipherSelect.value || '').toLowerCase();
+    const key = keyInput.value;
+    const cipherText = inputText.value || '';
+
+    if (!cipherText) {
+      showOutput('Enter ciphertext to decrypt.', true);
+      return;
+    }
+
+    try {
+      let result = '';
+
+      switch (cipher) {
+        case 'caesar': {
+          if (key === '') {
+            showOutput('Enter shift value (e.g., 3).', true);
+            return;
+          }
+          result = caesarDecrypt(cipherText, key);
+          showOutput(result);
+          break;
+        }
+
+        case 'base64': {
+          try {
+            result = base64DecodeUtf8(cipherText);
+            showOutput(result);
+          } catch (e) {
+            showOutput('Invalid Base64 input.', true);
+          }
+          break;
+        }
+
+        case 'aes': {
+          if (!window.CryptoJS) {
+            showOutput('CryptoJS not loaded for AES.', true);
+            return;
+          }
+          if (!key) {
+            showOutput('Enter the AES passphrase/key to decrypt.', true);
+            return;
+          }
+          try {
+            const bytes = CryptoJS.AES.decrypt(cipherText, key);
+            result = bytes.toString(CryptoJS.enc.Utf8);
+            if (!result) throw new Error('Invalid key or corrupted ciphertext');
+            showOutput(result);
+          } catch (e) {
+            showOutput('AES decryption failed — check key/ciphertext.', true);
+          }
+          break;
+        }
+
+        case 'des': {
+          if (!window.CryptoJS) {
+            showOutput('CryptoJS not loaded for DES.', true);
+            return;
+          }
+          if (!key) {
+            showOutput('Enter the DES key to decrypt.', true);
+            return;
+          }
+          try {
+            const bytes = CryptoJS.DES.decrypt(cipherText, key);
+            result = bytes.toString(CryptoJS.enc.Utf8);
+            if (!result) throw new Error('Invalid key or corrupted ciphertext');
+            showOutput(result);
+          } catch (e) {
+            showOutput('DES decryption failed — check key/ciphertext.', true);
+          }
+          break;
+        }
+
+        case 'sha256': {
+          showOutput('SHA-256 is a one-way hash and cannot be decrypted.', true);
+          break;
+        }
+
+        default:
+          showOutput('Unsupported cipher selected.', true);
+      }
+    } catch (err) {
+      showOutput('Decryption error: ' + (err && err.message ? err.message : String(err)), true);
+      console.error(err);
+    }
+  });
+
+  inputText.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'Enter') {
+      encryptBtn.click();
+    }
+  });
+
+  cipherSelect.addEventListener('change', () => {
+    const c = cipherSelect.value.toLowerCase();
+    switch (c) {
+      case 'caesar':
+        keyInput.placeholder = 'Numeric shift (e.g., 3)';
+        inputText.placeholder = 'Type plaintext to encrypt, or ciphertext to decrypt...';
+        break;
+      case 'base64':
+        keyInput.placeholder = '(not required)';
+        inputText.placeholder = 'Type plaintext to encode or paste Base64 to decode...';
+        break;
+      case 'aes':
+        keyInput.placeholder = 'Passphrase / key (required)';
+        inputText.placeholder = 'Type plaintext to encrypt or paste AES ciphertext to decrypt...';
+        break;
+      case 'des':
+        keyInput.placeholder = 'Key (required)';
+        inputText.placeholder = 'Type plaintext to encrypt or paste DES ciphertext to decrypt...';
+        break;
+      case 'sha256':
+        keyInput.placeholder = '(not used)';
+        inputText.placeholder = 'Type text to hash (one-way)...';
+        break;
+      default:
+        keyInput.placeholder = '';
+        inputText.placeholder = '';
+    }
+  });
+
+  cipherSelect.dispatchEvent(new Event('change'));
+})();
+</script>
+
+</body>
+</html>
